@@ -13,12 +13,18 @@ axesFont = 22
 # get output path
 path = 'graph.png' if len(sys.argv) < 2 else sys.argv[1]
 
-# get option for what to label (tags, temperatures, or contours) (-ta, -te, -co)
+# get option for what to label (tags, temperatures, or contours) (-ta, -te, -co, -ve, -bu)
 mode = '-co' if len(sys.argv) < 3 else sys.argv[2]
 
 # get data
 coord_raw = open('data/coordinates.csv', 'r').readlines()
-temps_raw = open('data/temps.csv', 'r').readlines()
+
+if mode == '-ve':
+  temps_raw = open('data/vegetation.csv', 'r').readlines()
+elif mode == '-bu':
+  temps_raw = open('data/building.csv', 'r').readlines()
+else:
+  temps_raw = open('data/temps.csv', 'r').readlines()
 
 # process temps
 processed_temps = [line.replace('\n', '').replace(' ', '').split(',') for line in temps_raw]
@@ -118,13 +124,36 @@ if mode == '-co':
     cmap=cmap
   )
 
+# draw contour
+if mode == '-ve':
+  contour = plt.contour(
+    grid[...,0], grid[...,1], 
+    predicted_temps, 
+    [min_temp + i/2 for i in range(2 * (int(max_temp) - int(min_temp)))], 
+    cmap='YlGn'
+  )
+
+# draw contour
+if mode == '-bu':
+  contour = plt.contour(
+    grid[...,0], grid[...,1], 
+    predicted_temps, 
+    [min_temp + i/2 for i in range(2 * (int(max_temp) - int(min_temp)))], 
+    cmap='copper'
+  )
+
 # plot points
 x_points = [[p[0] for p in points]]
 y_points = [[p[1] for p in points]]
 temp_points = [[p[2] for p in points]]
 
 # scatter points
-plt.scatter(x_points, y_points, c=temp_points, marker='o', s=80, edgecolor='black', linewidth=2, cmap=cmap, zorder=1000)
+if mode == '-ve':
+  plt.scatter(x_points, y_points, c=temp_points, marker='o', s=80, edgecolor='black', linewidth=2, cmap='YlGn', zorder=1000)
+elif mode == '-bu':
+  plt.scatter(x_points, y_points, c=temp_points, marker='o', s=80, edgecolor='black', linewidth=2, cmap='copper', zorder=1000)
+else:
+  plt.scatter(x_points, y_points, c=temp_points, marker='o', s=80, edgecolor='black', linewidth=2, cmap=cmap, zorder=1000)
 
 # cbd
 plt.text(
@@ -155,6 +184,16 @@ plt.plot(
   )]
 )
   
+if mode == '-ve' or mode == '-bu':
+  clabels = plt.clabel(contour, inline=False, fontsize=normalFont, colors='white', zorder=2000)
+
+  # border for labels
+  [l.set_path_effects([pe.withStroke(
+      linewidth=4, 
+      foreground="black"
+    )]
+  ) for l in clabels]
+
 if mode == '-co':
   # label contour lines
   label_levels = list(filter(lambda x: x % 1 == 0, contour.levels))
@@ -172,11 +211,18 @@ if mode == '-co':
   bar = plt.colorbar(format='%1.1f°C', fraction=0.030, pad=0.04)
   bar.ax.tick_params(labelsize=normalFont)
 
+if mode == '-ve' or mode == '-bu':
+  bar = plt.colorbar(fraction=0.030, pad=0.04)
+  bar.ax.tick_params(labelsize=normalFont)
 # axes
 axes = plt.gca()
 axes.tick_params(labelsize=normalFont)
 if mode == '-co':
   axes.set_title('Isotherm Map for Temperature Distribution Across Vancouver', size=titleFont)
+elif mode == '-ve':
+  axes.set_title('Contour Map for Vegetation Across Vancouver', size=titleFont)
+elif mode == '-bu':
+  axes.set_title('Contour Map for Building Density Across Vancouver', size=titleFont)
 elif mode == '-ta':
   axes.set_title('Tags for Data Collection Spots Across Vancouver', size=titleFont)
 elif mode == '-te':
